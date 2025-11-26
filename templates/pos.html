@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Coffee POS</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            transition: 0.3s;
+        }
+
+        :root {
+            --bg: #ffffff;
+            --card: #f1f1f1;
+            --text: #000000;
+            --accent: #d2691e;
+        }
+
+        .dark {
+            --bg: #121212;
+            --card: #2b2b2b;
+            --text: #ffffff;
+            --accent: #ffb87a;
+        }
+
+        header {
+            padding: 20px;
+            background: var(--accent);
+            color: white;
+            font-size: 24px;
+            text-align: center;
+        }
+
+        #toggleMode {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            padding: 8px 15px;
+            background: #fff;
+            border: none;
+            cursor: pointer;
+            border-radius: 6px;
+            font-weight: bold;
+        }
+
+        .category-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            padding: 15px;
+        }
+
+        .category-buttons button {
+            padding: 10px 18px;
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .container {
+            display: flex;
+            padding: 20px;
+        }
+
+        .items {
+            flex: 3;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 15px;
+            padding-right: 20px;
+        }
+
+        .item-card {
+            background: var(--card);
+            padding: 10px;
+            border-radius: 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .item-card:hover {
+            transform: scale(1.03);
+        }
+
+        .item-card img {
+            width: 100%;
+            height: 120px;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+
+        .cart {
+            flex: 1;
+            background: var(--card);
+            padding: 15px;
+            border-radius: 10px;
+            height: fit-content;
+        }
+
+        #cartList div {
+            margin-bottom: 10px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #777;
+        }
+
+        #payBtn {
+            width: 100%;
+            padding: 12px;
+            background: var(--accent);
+            color: white;
+            border: none;
+            font-size: 18px;
+            margin-top: 15px;
+            cursor: pointer;
+            border-radius: 6px;
+        }
+
+        #status {
+            margin-top: 10px;
+            font-weight: bold;
+        }
+
+    </style>
+</head>
+<body>
+
+<header>Coffee & Cake POS</header>
+<button id="toggleMode">Dark / Light</button>
+
+<!-- CATEGORY FILTERS -->
+<div class="category-buttons">
+    <button onclick="filterCategory('all')">All</button>
+    <button onclick="filterCategory('drink')">Drinks</button>
+    <button onclick="filterCategory('cake')">Cakes</button>
+</div>
+
+<div class="container">
+
+    <!-- LEFT: ITEMS -->
+    <div class="items" id="items"></div>
+
+    <!-- RIGHT: CART -->
+    <div class="cart">
+        <h3>Cart</h3>
+        <div id="cartList"></div>
+
+        <h2>Total: <span id="total">0</span> IQD</h2>
+
+        <button id="payBtn">Pay with Fingerprint</button>
+        <p id="status"></p>
+    </div>
+
+</div>
+
+<script>
+    let cart = [];
+    let allItems = [];
+    const itemsDiv = document.getElementById("items");
+    const cartList = document.getElementById("cartList");
+    const totalSpan = document.getElementById("total");
+    const statusText = document.getElementById("status");
+
+    // ======== DARK/LIGHT MODE =========
+    document.getElementById("toggleMode").onclick = function () {
+        document.body.classList.toggle("dark");
+    };
+
+    // ======== LOAD ITEMS FROM BACKEND =========
+    async function loadItems() {
+        const res = await fetch("/items");
+        allItems = await res.json();
+        displayItems(allItems);
+    }
+
+    // DISPLAY ITEMS
+    function displayItems(items) {
+        itemsDiv.innerHTML = "";
+
+        items.forEach(it => {
+    const card = document.createElement("div");
+    card.className = "item-card";
+
+    card.innerHTML = `
+        <img src="/static/${it.image}" alt="${it.name}">
+        <h4>${it.name}</h4>
+        <p>${it.price} IQD</p>
+    `;
+
+    card.onclick = () => addToCart(it);
+
+    itemsDiv.appendChild(card);
+});
+
+    }
+
+    // FILTER BY CATEGORY
+    function filterCategory(cat) {
+        if (cat === "all") {
+            displayItems(allItems);
+        } else {
+            displayItems(allItems.filter(x => x.category === cat));
+        }
+    }
+
+    // ADD TO CART
+    function addToCart(item) {
+        cart.push(item);
+        updateCart();
+    }
+
+    function updateCart() {
+        cartList.innerHTML = "";
+        let total = 0;
+
+        cart.forEach(it => {
+            total += it.price;
+
+            const row = document.createElement("div");
+            row.innerHTML = `${it.name} - ${it.price} IQD`;
+
+            cartList.appendChild(row);
+        });
+
+        totalSpan.textContent = total;
+    }
+
+    // PAYMENT
+    document.getElementById("payBtn").onclick = async () => {
+        let total = cart.reduce((s, it) => s + it.price, 0);
+
+        if (total === 0) {
+            alert("Cart is empty!");
+            return;
+        }
+
+        statusText.textContent = "Waiting for fingerprint...";
+
+        const res = await fetch("/pay", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({ total: total })
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+            statusText.textContent =
+                `Payment Success! User ${data.user_id}, New Balance: ${data.new_balance}`;
+
+            cart = [];
+            updateCart();
+        } else {
+            statusText.textContent = "Payment Failed: " + data.message;
+        }
+    };
+
+    loadItems();
+</script>
+
+</body>
+</html>
