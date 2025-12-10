@@ -8,16 +8,17 @@ from werkzeug.utils import secure_filename
 app = Flask(__name__, static_url_path="/static")
 
 # ==========================
-# IMAGE UPLOAD
+# IMAGE UPLOAD CONFIG
 # ==========================
 UPLOAD_FOLDER = "static/img/uploads"
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
 
 # ==========================
-# CONNECT TO FINGERPRINT DEVICE
+# CONNECT TO DEVICE
 # ==========================
-DEVICE_IP = "192.168.1.20"
+DEVICE_IP = "192.168.1.20"   # Your correct IP
 zk = ZK(DEVICE_IP, port=4370)
 
 print("Connecting to ZKTeco device...")
@@ -33,7 +34,7 @@ def get_db():
 
 
 # ==========================
-# LAST ATTENDANCE SCAN
+# LAST ATTENDANCE LOG
 # ==========================
 def get_last_log():
     try:
@@ -48,49 +49,52 @@ def get_last_log():
 
 
 # ==========================
-# PAGES
+# HOME PAGE
 # ==========================
 @app.route("/")
 def home():
     return render_template("index.html")
 
 
+# ==========================
+# ADMIN PAGE
+# ==========================
 @app.route("/admin")
 def admin_page():
     return render_template("admin.html")
 
 
 # ==========================
-# ADMIN ITEM PAGE
+# ADMIN – ADD ITEMS (UI)
 # ==========================
 @app.route("/admin/items", methods=["GET", "POST"])
 def admin_items():
     db = get_db()
     cur = db.cursor()
 
-    # ADD ITEM
     if request.method == "POST":
         name = request.form["name"]
         price = request.form["price"]
         category = request.form["category"]
 
+        # ---- Handle Image Upload ----
         file = request.files["image"]
-        if file and file.filename != "":
+        if file:
             filename = secure_filename(file.filename)
-            filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
-            file.save(filepath)
+            file_path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
+            file.save(file_path)
             image_path = f"img/uploads/{filename}"
         else:
             image_path = "img/default.jpg"
 
+        # ---- Insert into Database ----
         cur.execute("""
             INSERT INTO test_items (name, price, image, category)
             VALUES (?, ?, ?, ?)
         """, (name, price, image_path, category))
-
         db.commit()
 
-    # GET ITEMS
+    # Load all items
     cur.execute("SELECT id, name, price, image, category FROM test_items")
     items = cur.fetchall()
 
@@ -99,63 +103,59 @@ def admin_items():
 
 
 # ==========================
-# DELETE ITEM
+# API: LIST USERS
 # ==========================
-@app.route("/admin/delete_item/<int:item_id>", methods=["POST"])
-def delete_item(item_id):
+@app.route("/list_users")
+def list_users():
+    db = get_db()
+    cur = db.cursor()
+    cur.execute("SELECT user_id, name, balance FROM users")
+    rows = cur.fetchall()
+    db.close()
+
+    users = []
+    for r in rows:
+        users.append({
+            "user_id": r[0],
+            "name": r[1],
+            "balance": r[2]
+        })
+
+    return jsonify(users)
+
+
+# ==========================
+# API: ADD USER
+# ==========================
+@app.route("/add_user", methods=["POST"])
+def add_user():
+    data = request.get_json()
+
+    user_id = int(data["user_id"])
+    name = data["name"]
+    balance = int(data["balance"])
+
     db = get_db()
     cur = db.cursor()
 
-    cur.execute("DELETE FROM test_items WHERE id=?", (item_id,))
-    db.commit()
+    try:
+        cur.execute(
+            "INSERT INTO users (user_id, name, balance) VALUES (?, ?, ?)",
+            (user_id, name, balance)
+        )
+        db.commit()
+        msg = "User added successfully!"
+    except:
+        msg = "User already exists."
+
     db.close()
-
-    return ("", 204)
-
-
-# ==========================
-# EDIT ITEM
-# ==========================
-@app.route("/admin/edit_item", methods=["POST"])
-def edit_item():
-    item_id = request.form["id"]
-    name = request.form["name"]
-    price = request.form["price"]
-    category = request.form["category"]
-
-    db = get_db()
-    cur = db.cursor()
-
-    file = request.files["image"]
-    if file and file.filename != "":
-        filename = secure_filename(file.filename)
-        filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
-        file.save(filepath)
-        image_path = f"img/uploads/{filename}"
-
-        cur.execute("""
-            UPDATE test_items
-            SET name=?, price=?, category=?, image=?
-            WHERE id=?
-        """, (name, price, category, image_path, item_id))
-
-    else:
-        cur.execute("""
-            UPDATE test_items
-            SET name=?, price=?, category=?
-            WHERE id=?
-        """, (name, price, category, item_id))
-
-    db.commit()
-    db.close()
-
-    return "<script>window.location='/admin/items'</script>"
+    return jsonify({"message": msg})
 
 
 # ==========================
-# ITEMS API
+# GET ITEMS FOR POS
 # ==========================
-@app.route("/items")
+@app.route("/items", methods=["GET"])
 def get_items():
     db = get_db()
     cur = db.cursor()
@@ -175,69 +175,69 @@ def get_items():
         })
 
     return jsonify(items)
+
+
+# ==========================
+# PAYMENT — WORKING VERSION
+# ==========================
 @app.route("/pay", methods=["POST"])
 def pay():
     data = request.get_json()
     total = data.get("total")
 
-    print("\nWaiting fingerprint... Requested total:", total)
+    print(f"\nWaiting for fingerprint to pay: {total} IQD...")
 
-    # ----- previous scan -----
+    # Read last log before any new scan
     last_before = get_last_log()
+    print("Last log before scan:", last_before)
 
     timeout = time.time() + 10
     new_log = None
 
+    # Wait for new attendance
     while time.time() < timeout:
-        now = get_last_log()
-        if now and last_before and now != last_before:
-            new_log = now
+        current = get_last_log()
+
+        if current and last_before:
+            if current != last_before:
+                new_log = current
+                print("New fingerprint detected! User:", new_log[0])
+                break
+
+        elif current and not last_before:
+            new_log = current
+            print("New fingerprint detected! User:", new_log[0])
             break
-        elif now and not last_before:
-            new_log = now
-            break
-        time.sleep(0.25)
+
+        time.sleep(0.3)
 
     if not new_log:
+        print("No fingerprint detected (timeout)")
         return jsonify({"success": False, "message": "No fingerprint detected"}), 400
 
     user_id = new_log[0]
-    print("Fingerprint → User:", user_id)
 
-    # lookup user
+    # ==========================
+    # PAYMENT LOGIC
+    # ==========================
     db = get_db()
     cur = db.cursor()
 
-    cur.execute("SELECT name, balance FROM users WHERE user_id=?", (user_id,))
+    cur.execute("SELECT balance FROM users WHERE user_id=?", (user_id,))
     result = cur.fetchone()
 
     if not result:
         db.close()
-        return jsonify({"success": False, "message": "User not found"})
+        return jsonify({"success": False, "message": "User not found"}), 404
 
-    name, balance = result
+    balance = result[0]
 
-    # --------------------------------
-    # FIRST STEP: PREVIEW ONLY
-    # --------------------------------
-    if total == -1:
-        db.close()
-        return jsonify({
-            "success": True,
-            "preview": True,
-            "user_id": user_id,
-            "name": name,
-            "balance": balance
-        })
-
-    # --------------------------------
-    # SECOND STEP: REAL PAYMENT
-    # --------------------------------
     if balance < total:
         db.close()
         return jsonify({
             "success": False,
             "message": "Not enough balance",
+            "user_id": user_id,
             "balance": balance
         })
 
@@ -249,13 +249,18 @@ def pay():
     db.commit()
     db.close()
 
+    print(f"Payment SUCCESS! User {user_id}, New Balance = {new_balance}")
+
     return jsonify({
         "success": True,
         "message": "Payment success",
         "user_id": user_id,
-        "name": name,
-        "old_balance": balance,
         "new_balance": new_balance
     })
+
+
+# ==========================
+# START SERVER
+# ==========================
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)

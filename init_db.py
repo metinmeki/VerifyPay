@@ -3,10 +3,10 @@ import sqlite3
 db = sqlite3.connect("payments.db")
 cur = db.cursor()
 
-# Add all users in your device
 users = [
-    (2, "User1", 50000),
-    (3,"USer3",5000)
+    (2, "User2", 50000),
+    (3, "User3", 5000),
+    (1, "Metin", 20000),
 ]
 
 for u in users:

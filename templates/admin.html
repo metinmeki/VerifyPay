@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin Panel</title>
+    <style>
+        body { font-family: Arial; padding: 20px; }
+        input, button { padding: 8px; margin: 5px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ccc; padding: 10px; text-align: left; }
+    </style>
+</head>
+<body>
+
+<h2>Add User</h2>
+
+<input id="user_id" type="number" placeholder="User ID" />
+<input id="name" type="text" placeholder="Name" />
+<input id="balance" type="number" placeholder="Starting Balance" />
+<a href="/" class="back-btn">← Back to POS</a>
+
+<button onclick="addUser()">Add User</button>
+<a href="/" class="back-btn">← Back to POS</a>
+<p id="result"></p>
+
+<h3>Users List</h3>
+
+<table id="usersTable">
+    <thead>
+        <tr><th>User ID</th><th>Name</th><th>Balance</th></tr>
+    </thead>
+    <tbody></tbody>
+</table>
+
+<script>
+async function loadUsers() {
+    let res = await fetch("/list_users");
+    let users = await res.json();
+
+    let table = document.querySelector("#usersTable tbody");
+    table.innerHTML = "";
+
+    users.forEach(u => {
+        let row = `
+        <tr>
+            <td>${u.user_id}</td>
+            <td>${u.name}</td>
+            <td>${u.balance}</td>
+        </tr>`;
+        table.innerHTML += row;
+    });
+}
+
+async function addUser() {
+    let user_id = document.getElementById("user_id").value;
+    let name = document.getElementById("name").value;
+    let balance = document.getElementById("balance").value;
+
+    let res = await fetch("/add_user", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ user_id, name, balance })
+    });
+
+    let data = await res.json();
+    document.getElementById("result").innerText = data.message;
+    loadUsers();
+}
+
+loadUsers();
+</script>
+<style>
+.back-btn {
+    display: inline-block;
+    margin-bottom: 20px;
+    padding: 8px 16px;
+    background: #d2691e;
+    color: white;
+    font-weight: bold;
+    text-decoration: none;
+    border-radius: 6px;
+    transition: 0.2s;
+}
+
+.back-btn:hover {
+    background: #b85c18;
+}
+</style>
+
+</body>
+</html>

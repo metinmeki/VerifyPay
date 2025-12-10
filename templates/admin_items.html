@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <a href="/" class="back-btn">← Back to POS</a>
+    <title>Manage Items</title>
+    <style>
+        body { font-family: Arial; margin: 40px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        td, th { padding: 10px; border: 1px solid #ccc; }
+        input, select { padding: 8px; width: 200px; margin-right: 10px; }
+        .btn { padding: 10px 20px; background: #d2691e; color: white; border-radius: 6px; border: none; cursor: pointer; }
+        .btn-delete { background: #c0392b; }
+        .btn-edit { background: #2980b9; }
+        img { width: 80px; border-radius: 8px; }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            left: 0; top: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            width: 350px;
+        }
+        .close-btn {
+            float: right;
+            cursor: pointer;
+            font-size: 20px;
+        }
+    </style>
+</head>
+
+<body>
+
+<h2>Add Item</h2>
+
+<form action="/admin/items" method="POST" enctype="multipart/form-data">
+    <input type="text" name="name" placeholder="Item Name" required>
+    <input type="number" name="price" placeholder="Price" required>
+
+    <select name="category" required>
+        <option value="drink">Drink</option>
+        <option value="cake">Cake</option>
+        <option value="food">Food</option>
+        <option value="donut">Donut</option>
+    </select>
+
+    <input type="file" name="image" required>
+
+    <button class="btn" type="submit">Add Item</button>
+</form>
+
+<h2 style="margin-top: 40px;">Items List</h2>
+
+<table>
+    <tr>
+        <th>ID</th>
+        <th>Preview</th>
+        <th>Name</th>
+        <th>Price</th>
+        <th>Category</th>
+        <th>Image Path</th>
+        <th>Edit</th>
+        <th>Delete</th>
+    </tr>
+
+    {% for item in items %}
+    <tr>
+        <td>{{ item[0] }}</td>
+        <td><img src="/static/{{ item[3] }}"></td>
+        <td>{{ item[1] }}</td>
+        <td>{{ item[2] }} IQD</td>
+        <td>{{ item[4] }}</td>
+        <td>{{ item[3] }}</td>
+
+        <!-- EDIT BUTTON -->
+        <td>
+            <button class="btn btn-edit" onclick="openEditModal(
+                '{{ item[0] }}',
+                '{{ item[1] }}',
+                '{{ item[2] }}',
+                '{{ item[4] }}'
+            )">Edit</button>
+        </td>
+
+        <!-- DELETE BUTTON -->
+        <td>
+            <form action="/admin/delete_item/{{ item[0] }}" method="POST" onsubmit="return confirm('Delete this item?');">
+                <button class="btn btn-delete">Delete</button>
+            </form>
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+
+<!-- ==========================
+       EDIT MODAL
+=========================== -->
+<div class="modal" id="editModal">
+    <div class="modal-content">
+        <span class="close-btn" onclick="closeEditModal()">×</span>
+        <h3>Edit Item</h3>
+
+        <form id="editForm" action="/admin/edit_item" method="POST" enctype="multipart/form-data">
+            <input type="hidden" name="id" id="edit_id">
+            <a href="/" class="back-btn">← Back to POS</a>
+
+
+            <label>Name</label><br>
+            <input type="text" name="name" id="edit_name" required><br><br>
+
+            <label>Price</label><br>
+            <input type="number" name="price" id="edit_price" required><br><br>
+
+            <label>Category</label><br>
+            <select name="category" id="edit_category" required>
+                <option value="drink">Drink</option>
+                <option value="cake">Cake</option>
+                <option value="food">Food</option>
+                <option value="donut">Donut</option>
+            </select><br><br>
+
+            <label>New Image (optional)</label><br>
+            <input type="file" name="image"><br><br>
+
+            <button class="btn" type="submit">Save Changes</button>
+        </form>
+    </div>
+</div>
+
+<script>
+function openEditModal(id, name, price, category) {
+    document.getElementById("edit_id").value = id;
+    document.getElementById("edit_name").value = name;
+    document.getElementById("edit_price").value = price;
+    document.getElementById("edit_category").value = category;
+
+    document.getElementById("editModal").style.display = "flex";
+}
+
+function closeEditModal() {
+    document.getElementById("editModal").style.display = "none";
+}
+</script>
+
+</body>
+</html>

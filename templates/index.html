@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Coffee POS</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg-page: #faf6f2;
+            --bg-header: #f28b3c;
+            --bg-card: #ffffff;
+            --bg-cart: #fff8f1;
+            --text-main: #222222;
+            --text-muted: #888888;
+            --accent: #f28b3c;
+            --accent-dark: #d36f23;
+            --border-soft: #e3d7cc;
+            --radius-card: 14px;
+            --shadow-soft: 0 10px 25px rgba(0, 0, 0, 0.06);
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: "Poppins", Arial, sans-serif;
+            background: radial-gradient(circle at top, #fff5eb 0, #faf6f2 40%, #f3eee8 100%);
+            color: var(--text-main);
+        }
+
+        /* HEADER */
+        header {
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            background: linear-gradient(90deg, #f28b3c, #f4a35c);
+            color: white;
+            padding: 14px 40px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .brand {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .brand-title {
+            font-size: 22px;
+            font-weight: 700;
+        }
+
+        .brand-sub {
+            font-size: 11px;
+            opacity: 0.9;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn {
+            border: none;
+            border-radius: 999px;
+            padding: 7px 16px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: 0.15s ease;
+        }
+
+        .btn-white {
+            background: #ffffff;
+            color: #333;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+        }
+
+        .btn-white:hover {
+            transform: translateY(-1px);
+        }
+
+        .btn-ghost {
+            background: rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.4);
+            color: white;
+        }
+
+        /* CATEGORY STRIP */
+        .category-strip {
+            max-width: 1200px;
+            margin: 16px auto 6px;
+            padding: 0 12px;
+        }
+
+        .category-label {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1.4px;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+
+        .category-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .category-buttons button {
+            border-radius: 999px;
+            padding: 7px 16px;
+            border: 1px solid var(--border-soft);
+            background: #ffffff;
+            color: #555;
+            cursor: pointer;
+            transition: 0.15s ease;
+            font-size: 13px;
+        }
+
+        .category-buttons button.active {
+            background: var(--accent);
+            color: white;
+            border-color: transparent;
+            box-shadow: 0 7px 18px rgba(242,139,60,0.35);
+        }
+
+        /* MAIN LAYOUT */
+        .page-wrapper {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 10px 12px 30px;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: minmax(0, 2.3fr) minmax(260px, 1fr);
+            gap: 18px;
+        }
+
+        /* ITEMS GRID */
+        .items {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+            gap: 14px;
+        }
+
+        .item-card {
+            background: var(--bg-card);
+            border-radius: var(--radius-card);
+            padding: 10px;
+            box-shadow: var(--shadow-soft);
+            cursor: pointer;
+            transition: 0.15s ease;
+        }
+
+        .item-card:hover {
+            transform: translateY(-4px);
+        }
+
+        .item-card img {
+            width: 100%;
+            height: 130px;
+            object-fit: cover;
+            border-radius: 12px;
+        }
+
+        /* CART */
+        .cart {
+            background: var(--bg-cart);
+            padding: 14px;
+            border-radius: 18px;
+            box-shadow: var(--shadow-soft);
+        }
+
+        .cart-header {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .cart-footer {
+            margin-top: 12px;
+        }
+
+        #payBtn {
+            width: 100%;
+            padding: 12px;
+            border-radius: 999px;
+            border: none;
+            background: var(--accent);
+            color: white;
+            font-size: 15px;
+            cursor: pointer;
+        }
+
+        #userPreview {
+            margin-top: 10px;
+            padding: 10px;
+            background: #fff3e6;
+            border-left: 4px solid #f28b3c;
+            border-radius: 6px;
+            font-size: 13px;
+            display: none;
+        }
+
+        #status {
+            margin-top: 10px;
+            font-size: 13px;
+        }
+
+        .status-success { color: #1f8c46; }
+        .status-error { color: #c13535; }
+        .status-wait { color: #b37217; }
+
+    </style>
+</head>
+
+<body>
+
+<header>
+    <div class="brand">
+        <div class="brand-title">Coffee & Cake POS</div>
+        <div class="brand-sub">Fast orders, fingerprint payment</div>
+    </div>
+
+    <div class="header-actions">
+        <a href="/admin"><button class="btn btn-ghost">Admin Panel</button></a>
+        <a href="/admin/items"><button class="btn btn-white">Manage Items</button></a>
+    </div>
+</header>
+
+
+<div class="page-wrapper">
+    <div class="category-strip">
+        <div class="category-label">Categories</div>
+
+        <div class="category-buttons">
+            <button class="active" onclick="setCategory(this,'all')">All</button>
+            <button onclick="setCategory(this,'drink')">Drink</button>
+            <button onclick="setCategory(this,'cake')">Cake</button>
+            <button onclick="setCategory(this,'donut')">Donut</button>
+        </div>
+    </div>
+
+    <div class="container">
+
+        <!-- ITEMS -->
+        <div class="items" id="items"></div>
+
+        <!-- CART -->
+        <div class="cart">
+            <h3>Cart</h3>
+            <div id="cartList"></div>
+            <div id="emptyCartMsg" style="font-size:12px;color:#999;margin-top:10px;">
+                Cart is empty.
+            </div>
+
+            <div class="cart-footer">
+                <p><b>Total:</b> <span id="total">0</span> IQD</p>
+
+                <button id="payBtn">Pay with Fingerprint</button>
+
+                <div id="userPreview"></div>
+
+                <p id="status"></p>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+
+
+<script>
+    let allItems = [];
+    const itemsDiv = document.getElementById("items");
+    const cart = new Map();
+    const cartList = document.getElementById("cartList");
+    const totalSpan = document.getElementById("total");
+    const userPreview = document.getElementById("userPreview");
+    const statusText = document.getElementById("status");
+
+    async function loadItems() {
+        const res = await fetch("/items");
+        allItems = await res.json();
+        displayItems(allItems);
+    }
+
+    function displayItems(items) {
+        itemsDiv.innerHTML = "";
+        items.forEach(it => {
+            const card = document.createElement("div");
+            card.className = "item-card";
+            card.innerHTML = `
+                <img src="/static/${it.image}">
+                <div style="margin-top:6px;font-weight:600">${it.name}</div>
+                <div style="font-size:13px;color:#b37217">${it.price} IQD</div>
+            `;
+            card.onclick = () => addToCart(it);
+            itemsDiv.appendChild(card);
+        });
+    }
+
+    function setCategory(btn, cat) {
+        document.querySelectorAll(".category-buttons button")
+            .forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+
+        if (cat === "all") displayItems(allItems);
+        else displayItems(allItems.filter(x => x.category === cat));
+    }
+
+    function addToCart(item) {
+        if (cart.has(item.id)) cart.get(item.id).qty++;
+        else cart.set(item.id, { item: item, qty: 1 });
+        renderCart();
+    }
+
+    function renderCart() {
+        cartList.innerHTML = "";
+        let total = 0;
+
+        cart.forEach(entry => {
+            total += entry.item.price * entry.qty;
+            cartList.innerHTML += `
+                <div>${entry.item.name} × ${entry.qty} — ${entry.item.price * entry.qty} IQD</div>
+            `;
+        });
+
+        totalSpan.textContent = total;
+        document.getElementById("emptyCartMsg").style.display =
+            cart.size === 0 ? "block" : "none";
+    }
+
+    function setStatus(msg, type = "") {
+        statusText.textContent = msg;
+        statusText.className = type ? "status-" + type : "";
+    }
+
+    // ============================
+    // TWO-STEP FINGERPRINT PAYMENT
+    // ============================
+    document.getElementById("payBtn").onclick = async () => {
+        let total = 0;
+        cart.forEach(entry => total += entry.item.price * entry.qty);
+
+        if (total === 0) {
+            alert("Cart is empty.");
+            return;
+        }
+
+        setStatus("Waiting for fingerprint...", "wait");
+        userPreview.style.display = "none";
+
+        const res = await fetch("/pay", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ total: total })
+        });
+
+        const data = await res.json();
+
+        // Step 1: Show user info
+        if (data.preview) {
+            userPreview.style.display = "block";
+            userPreview.innerHTML = `
+                👋 Welcome <b>${data.name}</b><br>
+                Balance: <b>${data.balance.toLocaleString()} IQD</b>
+            `;
+            setStatus("Touch fingerprint again to confirm.", "wait");
+            return;
+        }
+
+        // Step 2: Process payment
+        if (data.success) {
+            setStatus(
+                "Payment Success! New Balance: " + data.new_balance.toLocaleString() + " IQD",
+                "success"
+            );
+            cart.clear();
+            renderCart();
+            userPreview.style.display = "none";
+        } else {
+            setStatus("Payment failed: " + data.message, "error");
+        }
+    };
+
+
+    loadItems();
+</script>
+
+</body>
+</html>
